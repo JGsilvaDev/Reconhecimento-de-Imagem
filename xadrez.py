@@ -37,14 +37,14 @@ for row in range(rows):
         col_name = chr(65 + col)  # Converte o valor da coluna para a letra correspondente (A-H)
         row_name = str(8 - row)    # Converte o valor da linha para o número correspondente (1-8)
         # Desenha um quadrado delimitando a casa
-        cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0), 2)
+        # cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0), 2)
         # Calcula o centro do quadrado
         cx = (x1 + x2) // 2
         cy = (y1 + y2) // 2
         # Desenha um círculo nas coordenadas da casa
-        cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
+        # cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
         # Escreve as coordenadas da casa
-        cv2.putText(image, f'{col_name}{row_name}', (cx - 10, cy - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        cv2.putText(image, f'{col_name}{row_name}', (cx - 10, cy), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
 # Redimensiona a imagem
 width = int(image.shape[1])
