@@ -1,6 +1,11 @@
 import cv2
 import numpy as np
 
+class Movement:
+    def __init__(self, from_square, to_square):
+        self.from_square = from_square
+        self.to_square = to_square
+
 # Função de callback para evento de clique
 def click_event(event, x, y, flags, params):
     if event == cv2.EVENT_LBUTTONDOWN:
@@ -14,22 +19,7 @@ def click_event(event, x, y, flags, params):
         # Exibe as coordenadas da casa clicada
         print(f"Casa clicada: {col_name}{row_name}")
 
-# Carrega a imagem do tabuleiro de xadrez original e a imagem com as mudanças
-original_image = cv2.imread('tabuleiro.png')
-changed_image = cv2.imread('tabuleiro2.png')
-
-# Define as dimensões do tabuleiro de xadrez
-rows = 8
-cols = 8
-
-# Calcula o tamanho exato de cada quadrado do tabuleiro
-square_size_x = original_image.shape[1] // cols
-square_size_y = original_image.shape[0] // rows
-
-# Flag para controlar qual imagem está sendo exibida
-show_original = True
-
-# Função para comparar as duas imagens e destacar as diferenças
+# Função para comparar duas imagens e destacar as diferenças
 def highlight_differences(original, changed):
     # Converte as imagens para escala de cinza
     original_gray = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
@@ -42,7 +32,8 @@ def highlight_differences(original, changed):
     contours, _ = cv2.findContours(threshold, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # Desenha os contornos das diferenças na imagem original
     highlighted_image = original.copy()
-    movements = set()  # Armazena os movimentos únicos
+    movements = []  # Armazena os movimentos
+
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         # Calcula as coordenadas das casas onde a peça estava e para onde foi
@@ -56,21 +47,33 @@ def highlight_differences(original, changed):
         # Converte os índices das linhas para os números correspondentes (1-8)
         row_original_name = str(row_original + 1)
         row_changed_name = str(row_changed + 1)
+        # Cria um objeto Movement para representar o movimento
+        movement = Movement(
+            from_square=f"{col_original_name}{row_original_name}",
+            to_square=f"{col_changed_name}{row_changed_name}"
+        )
         # Adiciona o movimento à lista de movimentos
-        movement = f"{col_original_name}{row_original_name}-{col_changed_name}{row_changed_name}"
-        movements.add(movement)
+        movements.append(movement)
         # Desenha o contorno da diferença na imagem original
         cv2.rectangle(highlighted_image, (x, y), (x + w, y + h), (0, 0, 255), 2)
       
-    coordenadas = []
-    
+    # Imprime todos os movimentos
     for movement in movements:
-        coordenadas.append(movement[0:2])
+        print(f"From: {movement.from_square}, To: {movement.to_square}")
         
-    coordenada_final = f"{coordenadas[1]}{coordenadas[0]}"
-    print(coordenada_final)
-        
-    return highlighted_image
+    return highlighted_image, movements
+
+# Carrega a imagem do tabuleiro de xadrez original e a imagem com as mudanças
+original_image = cv2.imread('tabuleiro2.png')
+changed_image = cv2.imread('tabuleiro.png')
+
+# Define as dimensões do tabuleiro de xadrez
+rows = 8
+cols = 8
+
+# Calcula o tamanho exato de cada quadrado do tabuleiro
+square_size_x = original_image.shape[1] // cols
+square_size_y = original_image.shape[0] // rows
 
 # Redimensiona as imagens
 width = int(original_image.shape[1])
@@ -88,14 +91,11 @@ cv2.setMouseCallback('Chess Board', click_event)
 while True:
     key = cv2.waitKey(1)
     if key == 32:  # Barra de espaço
-        show_original = not show_original
-        if show_original:
-            cv2.imshow('Chess Board', original_resized)
-        else:
-            # Destaca as diferenças entre as imagens
-            highlighted_image = highlight_differences(original_resized, changed_resized)
-            cv2.imshow('Chess Board', highlighted_image)
+        # Destaca as diferenças entre as imagens
+        highlighted_image, movements = highlight_differences(original_resized, changed_resized)
+        cv2.imshow('Chess Board', highlighted_image)
     elif key == 27:  # Tecla ESC para sair
         break
 
+cv2.waitKey(0)
 cv2.destroyAllWindows()
