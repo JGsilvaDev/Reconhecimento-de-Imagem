@@ -90,11 +90,11 @@ while True:
     if key == 32:  # Barra de espaço
         show_original = not show_original
         if show_original:
-            cv2.imshow('Chess Board', original_resized)
+            cv2.imshow('Chess Board', changed_resized)
         else:
             # Destaca as diferenças entre as imagens
             highlighted_image = highlight_differences(original_resized, changed_resized)
-            cv2.imshow('Chess Board', highlighted_image)
+            cv2.imshow('Chess Board', original_resized)
     elif key == 27:  # Tecla ESC para sair
         break
 
