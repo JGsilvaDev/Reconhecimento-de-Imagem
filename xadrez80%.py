@@ -51,10 +51,10 @@ def display_difference(difference_matrix):
     for i in range(difference_matrix.shape[0]):
         for j in range(difference_matrix.shape[1]):
             if difference_matrix[i, j] == 1:
-                start_square = f"{chr(ord('a') + j)}{8 - i}"
-            elif difference_matrix[i, j] == -1:
                 end_square = f"{chr(ord('a') + j)}{8 - i}"
-    print(f"De: {end_square} Para: {start_square}")
+            elif difference_matrix[i, j] == -1:
+                start_square = f"{chr(ord('a') + j)}{8 - i}"
+    print(f"De: {start_square} Para: {end_square}")
 
 # Função para processar uma imagem e criar uma matriz correspondente
 def process_image(image_path):
