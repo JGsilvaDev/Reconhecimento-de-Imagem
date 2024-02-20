@@ -50,7 +50,7 @@ def display_difference(difference_matrix):
     print("Movimento realizado:")
     for i in range(difference_matrix.shape[0]):
         for j in range(difference_matrix.shape[1]):
-            if difference_matrix[i, j] == 1 or end_square == None:
+            if difference_matrix[i, j] == 1:
                 end_square = f"{chr(ord('a') + j)}{8 - i}"
             elif difference_matrix[i, j] == -1:
                 start_square = f"{chr(ord('a') + j)}{8 - i}"
@@ -104,6 +104,7 @@ while True:
 
     # Comparação das matrizes
     difference_matrix = next_chessboard_matrix - chessboard_matrix
+    print(difference_matrix)
 
     # Exibição da diferença entre as matrizes usando coordenadas de xadrez
     display_difference(difference_matrix)
