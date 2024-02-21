@@ -17,8 +17,8 @@ matrix1 = [
 ]
 matrix2 = [
     [1,1,1,1,1,1,1,1],
-    [1,1,1,1,1,0,1,1],
-    [0,0,0,0,0,1,0,0],
+    [1,1,1,1,1,1,1,1],
+    [0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0],
     [0,0,0,0,0,0,0,0],
@@ -71,8 +71,13 @@ def check_movement(matriz1,matriz2):
             if matriz1[i][j] != matriz2[i][j]:
                 differences.append((j,i,matriz2[i][j]))
 
-    # print('diferencas antes de verificar: ',differences)
+    print('diferencas antes de verificar: ',differences)
 
+    # Caso não haja diferença
+    if not differences:
+        print('Nenhuma das peças foi movida, as matrizes estão iguais')
+        return
+    
     # Verificando qual das diferenças não existe no ponto inicial (primeira matriz)
     for difference in differences:
         print(peca_compara(matriz1,(difference[0],difference[1]),1))
@@ -85,9 +90,14 @@ def check_movement(matriz1,matriz2):
     for difference in differences:
         order.append((difference[0],difference[1]))
 
-    # print('Diferenças que sobraram',differences)
-    # print('ordem certa',order)
-        
+    print('Diferenças que sobraram',differences)
+    print('ordem certa',order)
+    
+    # Caso a peça seja comida, ou seja, ela tem o movimento de partida, mas nao o final
+    if len(order) <= 1:
+        print(f'A PEÇA NA POSICAO {to_pos(order[0])} FOI COMIDA')
+        return
+    
     return {'coordenadas': order, 'notacao':f'{to_pos(order[0])}{to_pos(order[1])}'}
 # Exemplo: check_movement(matriz inicial, matriz final)
 
