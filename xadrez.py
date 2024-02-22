@@ -1,77 +1,121 @@
 import cv2
 import numpy as np
 
-# Função de callback para evento de clique
-def click_event(event, x, y, flags, params):
-    if event == cv2.EVENT_LBUTTONDOWN:
-        # Calcula a coluna e a linha da casa clicada
-        col_clicked = x // square_size_x
-        row_clicked = 7 - (y // square_size_y)  # Inverte a ordem das linhas
-        # Converte o índice da coluna para a letra correspondente (A-H)
-        col_name = chr(65 + col_clicked)
-        # Converte o índice da linha para o número correspondente (1-8)
-        row_name = str(row_clicked + 1)  # Adiciona 1 ao índice da linha
-        # Exibe as coordenadas da casa clicada
-        print(f"Casa clicada: {col_name}{row_name}")
-
-# Função para comparar as duas matrizes de tabuleiro e encontrar as diferenças
-def compare_boards(board1, board2):
-    differences = []
-    for i in range(8):
-        for j in range(8):
-            if board1[i][j] != board2[i][j]:
-                differences.append(((i, j), board2[i][j]))
-    return differences
-
-# Função para criar a matriz de tabuleiro a partir da imagem
-def create_board(image):
-    board = np.zeros((8, 8), dtype=int)
-    # Identifica as casas com peças (valor diferente de 0 na imagem)
+def preprocess_image(image):
+    # Converte a imagem para tons de cinza
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
-    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Aplica uma limiarização para binarizar a imagem
+    _, binary = cv2.threshold(gray, 100, 255, cv2.THRESH_BINARY)
+    
+    # Realiza a detecção de bordas usando Canny
+    edges = cv2.Canny(binary, 50, 150)
+    
+    return edges
+
+def detect_pieces(image):
+    # Faz uma cópia da imagem original para desenhar os resultados
+    result_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    
+    # Encontra os contornos na imagem
+    contours, _ = cv2.findContours(image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Inicializa uma lista para armazenar os centros das peças
+    piece_centers = []
+    
     for contour in contours:
-        x, y, w, h = cv2.boundingRect(contour)
-        col = x // square_size_x
-        row = 7 - (y // square_size_y)  # Inverte a ordem das linhas
-        board[row][col] = 1
-    return board
+        # Calcula o centroide do contorno
+        M = cv2.moments(contour)
+        if M["m00"] != 0:
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            piece_centers.append((cX, cY))
+            # Calcula as coordenadas dos cantos do quadrado com base no centro e nas dimensões da peça
+            x, y, w, h = cv2.boundingRect(contour)
+            square_side = max(w, h)
+            x1 = cX - square_side // 2
+            y1 = cY - square_side // 2
+            x2 = cX + square_side // 2
+            y2 = cY + square_side // 2
+            cv2.rectangle(result_image, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Desenha o quadrado vermelho
+            # Desenha o centro
+            cv2.circle(result_image, (cX, cY), 3, (0, 0, 255), -1)  # Desenha um círculo vermelho
+        
+    # Exibe a imagem com os resultados
+    cv2.imshow("Detected Pieces", result_image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    return piece_centers
 
-# Carrega a imagem do tabuleiro de xadrez original e a imagem com as mudanças
-original_image = cv2.imread('tabuleiro.png')
-changed_image = cv2.imread('tabuleiro2.png')
+def filter_points(piece_centers, image):
+    # Cria um dicionário para armazenar os pontos filtrados por casa
+    filtered_points = {}
+    
+    for center in piece_centers:
+        # Calcula a posição da casa no tabuleiro
+        row = int(center[1] / (image.shape[0] / 8))
+        col = int(center[0] / (image.shape[1] / 8))
+        
+        # Se a casa já tiver um ponto, verifica se o ponto atual está mais próximo do centro da casa
+        if (row, col) in filtered_points:
+            existing_center = filtered_points[(row, col)]
+            existing_distance = (existing_center[0] - (image.shape[1] / 16))**2 + (existing_center[1] - (image.shape[0] / 16))**2
+            new_distance = (center[0] - (image.shape[1] / 16))**2 + (center[1] - (image.shape[0] / 16))**2
+            # Se o novo ponto estiver mais próximo do centro da casa, substitua o ponto existente
+            if new_distance < existing_distance:
+                filtered_points[(row, col)] = center
+        else:
+            # Se a casa ainda não tiver um ponto, adicione o ponto atual
+            filtered_points[(row, col)] = center
+    
+    # Retorna os pontos filtrados
+    return list(filtered_points.values())
 
-# Define as dimensões do tabuleiro de xadrez
-rows = 8
-cols = 8
+def create_chessboard_matrix(piece_centers, image):
+    # Inicializa uma matriz 8x8 com zeros
+    chessboard_matrix = np.zeros((8, 8), dtype=int)
+    
+    # Itera sobre os centros das peças detectadas
+    for center in piece_centers:
+        # Calcula a posição da peça no tabuleiro
+        row = int(center[1] / (image.shape[0] / 8))
+        col = int(center[0] / (image.shape[1] / 8))
+        
+        # Verifica a cor da peça com base na intensidade do pixel na vizinhança do centro
+        window = image[max(center[1]-5,0):min(center[1]+5,image.shape[0]), max(center[0]-5,0):min(center[0]+5,image.shape[1])]
+        intensity = np.mean(window)  # Calcula a média da intensidade dos pixels na vizinhança do centro
+        print(f"Coord: {row, col} - {intensity}")
+        
+        if intensity > 100:  # Se a intensidade do pixel for maior que 100 (branco ou cinza claro)
+            chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
+        else:
+            chessboard_matrix[row, col] = 5  # Peças pretas têm valor 5
+    
+    return chessboard_matrix
 
-# Calcula o tamanho exato de cada quadrado do tabuleiro
-square_size_x = original_image.shape[1] // cols
-square_size_y = original_image.shape[0] // rows
+# Função para processar uma imagem e criar uma matriz correspondente
+def process_image(image_path):
+    # Carrega a imagem
+    image = cv2.imread(image_path)
+    
+    # Pré-processa a imagem
+    processed_image = preprocess_image(image)
+    
+    # Detecta as peças na imagem pré-processada
+    piece_centers = detect_pieces(processed_image)
+    
+    # Cria a matriz do tabuleiro de xadrez
+    chessboard_matrix = create_chessboard_matrix(piece_centers, image)
+    
+    return chessboard_matrix
 
-# Exibe a imagem original com as coordenadas das casas
-cv2.imshow('Chess Board', original_image)
+# Caminho da imagem do tabuleiro de xadrez
+image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
 
-# Define o evento de clique do mouse
-cv2.setMouseCallback('Chess Board', click_event)
+# Processa a imagem e cria a matriz correspondente
+chessboard_matrix = process_image(image_path)
 
-original_board = create_board(original_image)
-
-# Mostra a matriz original no terminal
-print("Matriz original:")
-print(original_board)
-
-while True:
-    key = cv2.waitKey(1)
-    if key == 32:  # Barra de espaço
-        changed_board = create_board(changed_image)
-        differences = compare_boards(original_board, changed_board)
-        print("Matriz alterada:")
-        print(changed_board)
-        print("Diferenças:")
-        for diff in differences:
-            print(f"Casa alterada: {chr(diff[0][1] + 65)}{8 - diff[0][0]} para {chr(diff[0][1] + 65)}{8 - diff[1]}")
-    elif key == 27:  # Tecla ESC para sair
-        break
-
-cv2.destroyAllWindows()
+# Exibe a matriz correspondente à imagem
+print("Matriz correspondente à imagem:")
+print(chessboard_matrix)

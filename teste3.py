@@ -1,6 +1,12 @@
 import cv2
 import numpy as np
 
+colunas = {0:'a',1:'b',2:'c',3:'d',4:'e',5:'f',6:'g',7:'h'}
+linhas  = {0:'8',1:'7',2:'6',3:'5',4:'4',5:'3',6:'2',7:'1'}
+
+pos_colunas = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7}
+pos_linhas  = {'8':0,'7':1,'6':2,'5':3,'4':4,'3':5,'2':6,'1':7}
+
 def preprocess_image(image):
     # Converte a imagem para tons de cinza
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -45,17 +51,43 @@ def create_chessboard_matrix(piece_centers, image_shape):
     
     return chessboard_matrix
 
-# Função para exibir a diferença entre as matrizes usando coordenadas de xadrez
-def display_difference(difference_matrix):
-    print("Movimento realizado:")
-    for i in range(difference_matrix.shape[0]):
-        for j in range(difference_matrix.shape[1]):
-            if difference_matrix[i, j] == 1:
-                end_square = f"{chr(ord('a') + j)}{8 - i}"
-            elif difference_matrix[i, j] == -1:
-                start_square = f"{chr(ord('a') + j)}{8 - i}"
-                
-    print(f"De: {start_square} Para: {end_square}")
+    
+def peca_compara(matriz,coords,num):
+    # to_pos(coords)
+    return (matriz[coords[1]][coords[0]] == num)
+
+def to_pos(coords):
+    # x = colunas
+    # y = linhas
+    print(f'convertido para {colunas[coords[0]]}{linhas[coords[1]]}')
+    return f"{colunas[coords[0]]}{linhas[coords[1]]}"
+    
+def check_movement(matriz1, matriz2):
+    differences = [] 
+    order = []  # Inicializando como uma lista vazia
+
+    for i in range(len(matriz1)):
+        for j in range(len(matriz1)):
+            if matriz1[i][j] != matriz2[i][j]:
+                differences.append((j, i, matriz2[i][j]))
+
+    if not differences:
+        print('Nenhuma das peças foi movida, as matrizes estão iguais')
+        return
+    
+    for difference in differences:
+        if peca_compara(matriz1, (difference[0], difference[1]), 1):
+            order.append((difference[0], difference[1]))  # Adicionando como uma tupla
+    
+    for difference in differences:
+        if (difference[0], difference[1]) not in order:  # Verificando a ordem
+            order.append((difference[0], difference[1]))  # Adicionando como uma tupla
+    
+    if len(order) <= 1:
+        print(f'A PEÇA NA POSICAO {to_pos(order[0])} FOI COMIDA')
+        return
+    
+    return {'coordenadas': order, 'notacao': f'{to_pos(order[0])}{to_pos(order[1])}'}
 
 # Função para processar uma imagem e criar uma matriz correspondente
 def process_image(image_path):
@@ -101,13 +133,8 @@ while True:
     print("Matriz correspondente à próxima imagem:")
     print(next_chessboard_matrix)
     print()
-
-    # Comparação das matrizes
-    difference_matrix = next_chessboard_matrix - chessboard_matrix
-    print(difference_matrix)
-
-    # Exibição da diferença entre as matrizes usando coordenadas de xadrez
-    display_difference(difference_matrix)
+    
+    check_movement(next_chessboard_matrix, chessboard_matrix)
 
     # Atualiza a matriz para a próxima comparação
     chessboard_matrix = next_chessboard_matrix
