@@ -1,12 +1,6 @@
 import cv2
 import numpy as np
 
-colunas = {0:'a',1:'b',2:'c',3:'d',4:'e',5:'f',6:'g',7:'h'}
-linhas  = {0:'8',1:'7',2:'6',3:'5',4:'4',5:'3',6:'2',7:'1'}
-
-pos_colunas = {'a':0,'b':1,'c':2,'d':3,'e':4,'f':5,'g':6,'h':7}
-pos_linhas  = {'8':0,'7':1,'6':2,'5':3,'4':4,'3':5,'2':6,'1':7}
-
 def preprocess_image(image):
     # Converte a imagem para tons de cinza
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -27,67 +21,59 @@ def detect_pieces(image):
     piece_centers = []
     
     for contour in contours:
-        # Calcula o centro do contorno
+        # Calcula o centroide do contorno
         M = cv2.moments(contour)
         if M["m00"] != 0:
             cX = int(M["m10"] / M["m00"])
             cY = int(M["m01"] / M["m00"])
             piece_centers.append((cX, cY))
-    
+        
     return piece_centers
 
-def create_chessboard_matrix(piece_centers, image_shape):
+def filter_points(piece_centers, image):
+    # Cria um dicionário para armazenar os pontos filtrados por casa
+    filtered_points = {}
+    
+    for center in piece_centers:
+        # Calcula a posição da casa no tabuleiro
+        row = int(center[1] / (image.shape[0] / 8))
+        col = int(center[0] / (image.shape[1] / 8))
+        
+        # Calcula o ponto central da casa no tabuleiro
+        x_center = (col + 0.5) * (image.shape[1] / 8)
+        y_center = (row + 0.5) * (image.shape[0] / 8)
+        
+        # Adiciona o ponto central corrigido à lista de pontos filtrados
+        filtered_points[(row, col)] = (int(x_center), int(y_center))
+    
+    # Retorna os pontos filtrados
+    return list(filtered_points.values())
+
+def create_chessboard_matrix(piece_centers, image):
     # Inicializa uma matriz 8x8 com zeros
     chessboard_matrix = np.zeros((8, 8), dtype=int)
     
     # Itera sobre os centros das peças detectadas
     for center in piece_centers:
         # Calcula a posição da peça no tabuleiro
-        row = int(center[1] / (image_shape[0] / 8))
-        col = int(center[0] / (image_shape[1] / 8))
+        row = int(center[1] / (image.shape[0] / 8))
+        col = int(center[0] / (image.shape[1] / 8))
         
-        # Marca a posição da peça na matriz do tabuleiro
-        chessboard_matrix[row, col] = 1
-    
+        # Verifica a cor da peça com base na intensidade do pixel na vizinhança do centro
+        window = image[max(center[1]-5,0):min(center[1]+5,image.shape[0]), max(center[0]-5,0):min(center[0]+5,image.shape[1])]
+        intensity = np.mean(window)  # Calcula a média da intensidade dos pixels na vizinhança do centro
+        
+        if intensity > 120:  # Ajuste do limiar para distinguir as peças pretas
+            chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
+        else:
+            chessboard_matrix[row, col] = 5  # Peças pretas têm valor 5
+
+        if chessboard_matrix[row, col] == -4:
+            chessboard_matrix[row, col] = 1
+        elif chessboard_matrix[row, col] == 4:
+            chessboard_matrix[row, col] = 5
+        
     return chessboard_matrix
-
-    
-def peca_compara(matriz,coords,num):
-    # to_pos(coords)
-    return (matriz[coords[1]][coords[0]] == num)
-
-def to_pos(coords):
-    # x = colunas
-    # y = linhas
-    print(f'convertido para {colunas[coords[0]]}{linhas[coords[1]]}')
-    return f"{colunas[coords[0]]}{linhas[coords[1]]}"
-    
-def check_movement(matriz1, matriz2):
-    differences = [] 
-    order = []  # Inicializando como uma lista vazia
-
-    for i in range(len(matriz1)):
-        for j in range(len(matriz1)):
-            if matriz1[i][j] != matriz2[i][j]:
-                differences.append((j, i, matriz2[i][j]))
-
-    if not differences:
-        print('Nenhuma das peças foi movida, as matrizes estão iguais')
-        return
-    
-    for difference in differences:
-        if peca_compara(matriz1, (difference[0], difference[1]), 1):
-            order.append((difference[0], difference[1]))  # Adicionando como uma tupla
-    
-    for difference in differences:
-        if (difference[0], difference[1]) not in order:  # Verificando a ordem
-            order.append((difference[0], difference[1]))  # Adicionando como uma tupla
-    
-    if len(order) <= 1:
-        print(f'A PEÇA NA POSICAO {to_pos(order[0])} FOI COMIDA')
-        return
-    
-    return {'coordenadas': order, 'notacao': f'{to_pos(order[0])}{to_pos(order[1])}'}
 
 # Função para processar uma imagem e criar uma matriz correspondente
 def process_image(image_path):
@@ -100,10 +86,24 @@ def process_image(image_path):
     # Detecta as peças na imagem pré-processada
     piece_centers = detect_pieces(processed_image)
     
+    # Filtra os pontos para garantir que estejam no centro de cada casa do tabuleiro
+    filtered_points = filter_points(piece_centers, image)
+    
     # Cria a matriz do tabuleiro de xadrez
-    chessboard_matrix = create_chessboard_matrix(piece_centers, image.shape)
+    chessboard_matrix = create_chessboard_matrix(filtered_points, image)
     
     return chessboard_matrix
+
+def display_difference(difference_matrix):
+    print("Movimento realizado:")
+    for i in range(difference_matrix.shape[0]):
+        for j in range(difference_matrix.shape[1]):
+            if difference_matrix[i, j] == 1 or difference_matrix[i, j] == 4 (difference_matrix[i, j] != 0 and difference_matrix[i, j] != -1):
+                end_square = f"{chr(ord('a') + j)}{8 - i}"
+            elif difference_matrix[i, j] == -1 or difference_matrix[i, j] == -5:
+                start_square = f"{chr(ord('a') + j)}{8 - i}"
+                
+    print(f"De: {start_square} Para: {end_square}")
 
 # Caminho da imagem do tabuleiro de xadrez
 image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
@@ -116,7 +116,6 @@ print("Matriz correspondente à primeira imagem:")
 print(chessboard_matrix)
 print()
 
-# Loop para continuar com a próxima imagem
 while True:
     input("Pressione a tecla Enter para continuar com a próxima imagem...")
     
@@ -133,8 +132,23 @@ while True:
     print("Matriz correspondente à próxima imagem:")
     print(next_chessboard_matrix)
     print()
-    
-    check_movement(next_chessboard_matrix, chessboard_matrix)
+
+    # Comparação das matrizes
+    difference_matrix = next_chessboard_matrix - chessboard_matrix
+    print(difference_matrix)
+
+    # Exibição da diferença entre as matrizes usando coordenadas de xadrez
+    display_difference(difference_matrix)
 
     # Atualiza a matriz para a próxima comparação
     chessboard_matrix = next_chessboard_matrix
+
+# # Caminho da imagem do tabuleiro de xadrez
+# image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
+
+# # Processa a imagem e cria a matriz correspondente
+# chessboard_matrix = process_image(image_path)
+
+# # Exibe a matriz correspondente à imagem
+# print("Matriz correspondente à imagem:")
+# print(chessboard_matrix)
