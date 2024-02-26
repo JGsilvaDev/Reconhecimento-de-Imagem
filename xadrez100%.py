@@ -67,11 +67,6 @@ def create_chessboard_matrix(piece_centers, image):
             chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
         else:
             chessboard_matrix[row, col] = 5  # Peças pretas têm valor 5
-
-        if chessboard_matrix[row, col] == -4:
-            chessboard_matrix[row, col] = 1
-        elif chessboard_matrix[row, col] == 4:
-            chessboard_matrix[row, col] = 5
         
     return chessboard_matrix
 
@@ -94,14 +89,14 @@ def process_image(image_path):
     
     return chessboard_matrix
 
-def display_difference(difference_matrix):
+def display_difference(matrix1, matrix2):
     print("Movimento realizado:")
-    for i in range(difference_matrix.shape[0]):
-        for j in range(difference_matrix.shape[1]):
-            if difference_matrix[i, j] == 1 or difference_matrix[i, j] == 4 (difference_matrix[i, j] != 0 and difference_matrix[i, j] != -1):
-                end_square = f"{chr(ord('a') + j)}{8 - i}"
-            elif difference_matrix[i, j] == -1 or difference_matrix[i, j] == -5:
+    for i in range(matrix1.shape[0]):
+        for j in range(matrix1.shape[1]):
+            if (matrix1[i,j] == 5 and matrix2[i,j] == 0) or (matrix1[i,j] == 1 and matrix2[i,j] == 0):
                 start_square = f"{chr(ord('a') + j)}{8 - i}"
+            elif (matrix1[i,j] == 0 and matrix2[i,j] == 5) or (matrix1[i,j] == 0 and matrix2[i,j] == 1) or (matrix1[i,j] == 1 and matrix2[i,j] == 5) or (matrix1[i,j] == 5 and matrix2[i,j] == 1):
+                end_square = f"{chr(ord('a') + j)}{8 - i}"
                 
     print(f"De: {start_square} Para: {end_square}")
 
@@ -134,11 +129,11 @@ while True:
     print()
 
     # Comparação das matrizes
-    difference_matrix = next_chessboard_matrix - chessboard_matrix
-    print(difference_matrix)
+    # difference_matrix = next_chessboard_matrix - chessboard_matrix
+    # print(difference_matrix)
 
     # Exibição da diferença entre as matrizes usando coordenadas de xadrez
-    display_difference(difference_matrix)
+    display_difference(chessboard_matrix, next_chessboard_matrix)
 
     # Atualiza a matriz para a próxima comparação
     chessboard_matrix = next_chessboard_matrix
