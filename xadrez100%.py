@@ -63,6 +63,8 @@ def create_chessboard_matrix(piece_centers, image):
         window = image[max(center[1]-5,0):min(center[1]+5,image.shape[0]), max(center[0]-5,0):min(center[0]+5,image.shape[1])]
         intensity = np.mean(window)  # Calcula a média da intensidade dos pixels na vizinhança do centro
         
+        print(intensity)
+
         if intensity > 120:  # Ajuste do limiar para distinguir as peças pretas
             chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
         else:
