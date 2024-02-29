@@ -2,45 +2,49 @@ import cv2
 import numpy as np
 
 def preprocess_image(image):
-    # Converte a imagem para tons de cinza
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Convertendo a imagem para o espaço de cor HSV
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     
-    # Aplica um filtro Gaussiano para suavizar a imagem e reduzir o ruído
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    # Definindo os intervalos de cor para as peças brancas e pretas
+    lower_white = np.array([0, 0, 200])  # Ajustado para capturar melhor as peças brancas
+    upper_white = np.array([179, 50, 255])
+    lower_black = np.array([0, 0, 0])
+    upper_black = np.array([179, 255, 50])  # Ajustado para capturar melhor as peças pretas
     
-    # Aplica uma limiarização adaptativa para binarizar a imagem
-    binary = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 4)
+    # Segmentando as peças brancas e pretas
+    mask_white = cv2.inRange(hsv, lower_white, upper_white)
+    mask_black = cv2.inRange(hsv, lower_black, upper_black)
     
-    # Realiza a detecção de bordas usando Sobel
-    sobel_x = cv2.Sobel(binary, cv2.CV_64F, 1, 0, ksize=3)
-    sobel_y = cv2.Sobel(binary, cv2.CV_64F, 0, 1, ksize=3)
-    edges = cv2.magnitude(sobel_x, sobel_y)
+    # Combinando as máscaras
+    mask = cv2.bitwise_or(mask_white, mask_black)
+    
+    # Aplicando operações morfológicas para limpar os contornos
+    kernel = np.ones((5,5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    
+    # Realiza a detecção de bordas usando Canny
+    edges = cv2.Canny(mask, 50, 150)
     
     return edges
 
-
 def detect_pieces(image):
-    # Converte a imagem de bordas de volta para uma imagem binária
-    _, binary_image = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY)
-
-    # Garante que a imagem esteja no formato CV_8U
-    binary_image = np.uint8(binary_image)
-
-    # Encontra os componentes conectados na imagem binária
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary_image, connectivity=8)
-
+    # Encontra os contornos na imagem
+    contours, _ = cv2.findContours(image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
     piece_centers = []
-
-    # Itera sobre os componentes conectados encontrados
-    for label in range(1, num_labels):
-        # Calcula o centróide do componente conectado
-        cX, cY = centroids[label]
-
-        # Adiciona o centróide à lista de centros das peças
-        piece_centers.append((int(cX), int(cY)))
-
+    
+    for contour in contours:
+        # Obtém o retângulo delimitador do contorno
+        x, y, w, h = cv2.boundingRect(contour)
+        
+        # Calcula o centro do retângulo delimitador
+        cX = x + w // 2
+        cY = y + h // 2
+        
+        piece_centers.append((cX, cY))
+        
     return piece_centers
-
 
 def filter_points(piece_centers, image):
     filtered_points = {}
@@ -59,12 +63,9 @@ def filter_points(piece_centers, image):
     
     return list(filtered_points.values())
 
-def create_chessboard_matrix_with_intensity(piece_centers, image):
-    # Inicializa uma matriz 8x8 com zeros para o tabuleiro
+def create_chessboard_matrix(piece_centers, image):
+    # Inicializa uma matriz 8x8 com zeros
     chessboard_matrix = np.zeros((8, 8), dtype=int)
-    
-    # Inicializa uma matriz 8x8 com zeros para as intensidades
-    intensity_matrix = np.zeros((8, 8), dtype=int)
     
     # Itera sobre os centros das peças detectadas
     for center in piece_centers:
@@ -73,21 +74,16 @@ def create_chessboard_matrix_with_intensity(piece_centers, image):
         col = int(center[0] / (image.shape[1] / 8))
         
         # Verifica a cor da peça com base na intensidade do pixel na vizinhança do centro
-        window = image[max(center[1]-10,0):min(center[1]+10,image.shape[0]), max(center[0]-10,0):min(center[0]+10,image.shape[1])]
-        intensity = np.mean(window)  # Calcula a média da intensidade dos pixels na vizinhança do centro
-
-        # Adiciona o valor da intensidade à matriz de intensidades
-        intensity_matrix[row, col] = intensity
+        window = image[max(center[1]-5,0):min(center[1]+5,image.shape[0]), max(center[0]-5,0):min(center[0]+5,image.shape[1])]
+        pixels_abaixo_de_120 = np.sum(window < 120)
         
-        # Determina o valor da peça na matriz do tabuleiro
-        if intensity > 120:  # Ajuste do limiar para distinguir as peças pretas
-            chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
-        else:
+        if pixels_abaixo_de_120 > (5 * 5) // 2:  # Mais da metade dos pixels tem intensidade baixa
             chessboard_matrix[row, col] = 5  # Peças pretas têm valor 5
+        else:
+            chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
         
-    return chessboard_matrix, intensity_matrix
+    return chessboard_matrix
 
-# Função para processar uma imagem e criar uma matriz correspondente
 def process_image(image_path):
     image = cv2.imread(image_path)
     
@@ -101,7 +97,7 @@ def process_image(image_path):
     filtered_points = filter_points(piece_centers, image)
     
     # Cria a matriz do tabuleiro de xadrez
-    chessboard_matrix = create_chessboard_matrix_with_intensity(filtered_points, image)
+    chessboard_matrix = create_chessboard_matrix(filtered_points, image)
     
     return chessboard_matrix
 
