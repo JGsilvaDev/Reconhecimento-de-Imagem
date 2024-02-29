@@ -17,11 +17,9 @@ def detect_pieces(image):
     # Encontra os contornos na imagem
     contours, _ = cv2.findContours(image.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    # Inicializa uma lista para armazenar os centros das peças
     piece_centers = []
     
     for contour in contours:
-        # Calcula o centroide do contorno
         M = cv2.moments(contour)
         if M["m00"] != 0:
             cX = int(M["m10"] / M["m00"])
@@ -31,7 +29,6 @@ def detect_pieces(image):
     return piece_centers
 
 def filter_points(piece_centers, image):
-    # Cria um dicionário para armazenar os pontos filtrados por casa
     filtered_points = {}
     
     for center in piece_centers:
@@ -46,7 +43,6 @@ def filter_points(piece_centers, image):
         # Adiciona o ponto central corrigido à lista de pontos filtrados
         filtered_points[(row, col)] = (int(x_center), int(y_center))
     
-    # Retorna os pontos filtrados
     return list(filtered_points.values())
 
 def create_chessboard_matrix(piece_centers, image):
@@ -74,7 +70,6 @@ def create_chessboard_matrix(piece_centers, image):
 
 # Função para processar uma imagem e criar uma matriz correspondente
 def process_image(image_path):
-    # Carrega a imagem
     image = cv2.imread(image_path)
     
     # Pré-processa a imagem
@@ -102,13 +97,11 @@ def display_difference(matrix1, matrix2):
                 
     print(f"De: {start_square} Para: {end_square}")
 
-# Caminho da imagem do tabuleiro de xadrez
+
 image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
 
-# Processa a primeira imagem e cria a matriz correspondente
 chessboard_matrix = process_image(image_path)
 
-# Exibe a matriz correspondente à primeira imagem
 print("Matriz correspondente à primeira imagem:")
 print(chessboard_matrix)
 print()
@@ -116,36 +109,18 @@ print()
 while True:
     input("Pressione a tecla Enter para continuar com a próxima imagem...")
     
-    # Caminho da próxima imagem do tabuleiro de xadrez
     next_image_path = input("Digite o caminho da próxima imagem do tabuleiro de xadrez (ou pressione Enter para sair): ")
     
     if not next_image_path:
         break
     
-    # Processa a próxima imagem e cria a matriz correspondente
     next_chessboard_matrix = process_image(next_image_path)
 
-    # Exibe a matriz correspondente à próxima imagem
     print("Matriz correspondente à próxima imagem:")
     print(next_chessboard_matrix)
     print()
 
-    # Comparação das matrizes
-    # difference_matrix = next_chessboard_matrix - chessboard_matrix
-    # print(difference_matrix)
-
-    # Exibição da diferença entre as matrizes usando coordenadas de xadrez
     display_difference(chessboard_matrix, next_chessboard_matrix)
 
-    # Atualiza a matriz para a próxima comparação
     chessboard_matrix = next_chessboard_matrix
 
-# # Caminho da imagem do tabuleiro de xadrez
-# image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
-
-# # Processa a imagem e cria a matriz correspondente
-# chessboard_matrix = process_image(image_path)
-
-# # Exibe a matriz correspondente à imagem
-# print("Matriz correspondente à imagem:")
-# print(chessboard_matrix)
