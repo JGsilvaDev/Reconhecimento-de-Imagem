@@ -116,9 +116,12 @@ def display_difference(matrix1, matrix2):
                 
     moves = agrupar_pares(move)
     
-    for mv in moves:
-        print(f"De: {mv[0]} Para: {mv[1]}")
-
+    if(len(moves) != 2):
+        for mv in moves:
+            print(f"De: {mv[0]} Para: {mv[1]}")
+    else:
+        print(f"De: {moves[0][0]} Para: {moves[1][1]}")
+        print(f"De: {moves[1][0]} Para: {moves[0][1]}")
 
 image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
 
