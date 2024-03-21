@@ -59,7 +59,7 @@ def create_chessboard_matrix(piece_centers, image):
         window = image[max(center[1]-5,0):min(center[1]+5,image.shape[0]), max(center[0]-5,0):min(center[0]+5,image.shape[1])]
         intensity = np.mean(window)  # Calcula a média da intensidade dos pixels na vizinhança do centro
         
-        print(intensity)
+        # print(intensity)
 
         if intensity > 120:  # Ajuste do limiar para distinguir as peças pretas
             chessboard_matrix[row, col] = 1  # Peças brancas têm valor 1
@@ -86,16 +86,38 @@ def process_image(image_path):
     
     return chessboard_matrix
 
+def agrupar_pares(lista):
+    pares_agrupados = []
+    par_atual = []
+
+    for item in lista:
+        if item[1] == 'F':
+            par_atual.insert(0, item[0])
+        elif item[1] == 'L':  
+            par_atual.append(item[0])
+            
+        if(len(par_atual) == 2):    
+            pares_agrupados.append(tuple(par_atual))
+            par_atual = []
+
+    return pares_agrupados
+
 def display_difference(matrix1, matrix2):
     print("Movimento realizado:")
+    move = []
     for i in range(matrix1.shape[0]):
         for j in range(matrix1.shape[1]):
             if (matrix1[i,j] == 5 and matrix2[i,j] == 0) or (matrix1[i,j] == 1 and matrix2[i,j] == 0):
                 start_square = f"{chr(ord('a') + j)}{8 - i}"
+                move.append((start_square, 'F'))
             elif (matrix1[i,j] == 0 and matrix2[i,j] == 5) or (matrix1[i,j] == 0 and matrix2[i,j] == 1) or (matrix1[i,j] == 1 and matrix2[i,j] == 5) or (matrix1[i,j] == 5 and matrix2[i,j] == 1):
                 end_square = f"{chr(ord('a') + j)}{8 - i}"
+                move.append((end_square, 'L'))
                 
-    print(f"De: {start_square} Para: {end_square}")
+    moves = agrupar_pares(move)
+    
+    for mv in moves:
+        print(f"De: {mv[0]} Para: {mv[1]}")
 
 
 image_path = input("Digite o caminho da imagem do tabuleiro de xadrez: ")
